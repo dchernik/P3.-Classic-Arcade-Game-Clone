@@ -80,7 +80,7 @@ var Engine = (function(global) {
      */
     function update(dt) {
         updateEntities(dt);
-        // checkCollisions();
+        checkCollisions();
     }
 
     /* This is called by the update function  and loops through all of the
@@ -97,6 +97,26 @@ var Engine = (function(global) {
         player.update();
     }
 
+
+    function checkCollisions() {
+
+        for (i in allEnemies) {
+            var boy_sides_blank = (TILE_WIDTH - 68) / 2;
+            var player_left_edge = player.x + boy_sides_blank;
+            var player_right_edge = player.x + TILE_WIDTH - 2 * boy_sides_blank;
+
+            var enemy_sides_blank = (TILE_WIDTH - 97) / 2;
+            var enemy_left_edge = allEnemies[i].x + enemy_sides_blank;
+            var enemy_right_edge = allEnemies[i].x + TILE_WIDTH - 2 * enemy_sides_blank;
+
+            if (enemy_right_edge > player_left_edge &&
+                enemy_left_edge < player_right_edge &&
+                allEnemies[i].y === player.y) {
+                reset();
+            }
+        }
+    };
+
     /* This function initially draws the "game level", it will then call
      * the renderEntities function. Remember, this function is called every
      * game tick (or loop of the game engine) because that's how games work -
@@ -104,6 +124,9 @@ var Engine = (function(global) {
      * they are just drawing the entire screen over and over.
      */
     function render() {
+        // clears the canvas to eliminate sunken-hero" effect.
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
         /* This array holds the relative URL to the image used
          * for that particular row of the game level.
          */
@@ -160,7 +183,8 @@ var Engine = (function(global) {
      * those sorts of things. It's only called once by the init() method.
      */
     function reset() {
-        // noop
+        player.x = this.x = TILE_WIDTH * 2;
+        player.y = TILES_Y_START + TILE_HEIGHT * 3;;
     }
 
     /* Go ahead and load all of the images we know we're going to need to
