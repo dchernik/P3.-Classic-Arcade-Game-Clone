@@ -80,7 +80,10 @@ var Engine = (function(global) {
      */
     function update(dt) {
         updateEntities(dt);
-        checkCollisions();
+        if (checkCollisions() === true) {
+            reset();
+        }
+
     }
 
     /* This is called by the update function  and loops through all of the
@@ -97,22 +100,27 @@ var Engine = (function(global) {
         player.update();
     }
 
+    function pause(milliseconds) {
+        var dt = new Date();
+        while ((new Date()) - dt <= milliseconds) {
+        /* Do nothing */
+        }
+    }
 
     function checkCollisions() {
-
         for (i in allEnemies) {
-            var boy_sides_blank = (TILE_WIDTH - 68) / 2;
-            var player_left_edge = player.x + boy_sides_blank;
-            var player_right_edge = player.x + TILE_WIDTH - 2 * boy_sides_blank;
-
-            var enemy_sides_blank = (TILE_WIDTH - 97) / 2;
-            var enemy_left_edge = allEnemies[i].x + enemy_sides_blank;
-            var enemy_right_edge = allEnemies[i].x + TILE_WIDTH - 2 * enemy_sides_blank;
-
-            if (enemy_right_edge > player_left_edge &&
-                enemy_left_edge < player_right_edge &&
+            if (allEnemies[i].x + TILE_WIDTH / 1.4 > player.x  &&
+                allEnemies[i].x - TILE_WIDTH / 1.3 < player.x &&
                 allEnemies[i].y === player.y) {
-                reset();
+                return true
+            }
+        }
+        for (i in allGems) {
+            if (player.y > TILES_Y_START && allGems[i].x === player.x &&
+                allGems[i].y === player.y && player.pickedGem === false) {
+                allGems[i].x = -TILE_WIDTH;
+                allGems[i].y = -TILE_HEIGHT;
+                player.pickedGem = i;
             }
         }
     };
@@ -175,6 +183,10 @@ var Engine = (function(global) {
             enemy.render();
         });
 
+        allGems.forEach(function(gem) {
+            gem.render();
+        });
+
         player.render();
     }
 
@@ -196,7 +208,10 @@ var Engine = (function(global) {
         'images/water-block.png',
         'images/grass-block.png',
         'images/enemy-bug.png',
-        'images/char-boy.png'
+        'images/char-boy.png',
+        'images/Gem Blue.png',
+        'images/Gem Green.png',
+        'images/Gem Orange.png'
     ]);
     Resources.onReady(init);
 
