@@ -56,7 +56,21 @@ var Engine = (function(global) {
         /* Use the browser's requestAnimationFrame function to call this
          * function again as soon as the browser is able to draw another frame.
          */
-        win.requestAnimationFrame(main);
+        //win.requestAnimationFrame(main);
+        if (LIVES < 1) {
+            LIVES = 0;
+            gameOver();
+        }
+        else if (PAUSE.state === false) {
+            win.requestAnimationFrame(main);
+        }
+        else {
+            setTimeout(function() {win.requestAnimationFrame(main)}, PAUSE.ms);
+            player.reset();
+            PAUSE.state = false;
+            PAUSE.ms = 0;
+
+        }
     };
 
     /* This function does some initial setup that should only occur once,
@@ -80,10 +94,7 @@ var Engine = (function(global) {
      */
     function update(dt) {
         updateEntities(dt);
-        if (checkCollisions() === true) {
-            reset();
-        }
-
+        checkCollisions();
     }
 
     /* This is called by the update function  and loops through all of the
@@ -97,41 +108,56 @@ var Engine = (function(global) {
         allEnemies.forEach(function(enemy) {
             enemy.update(dt);
         });
+
+        allRocks.forEach(function(rock) {
+            rock.update(dt);
+        });
+
         player.update();
+
+        heart.update(dt);
     }
 
-    function pause(milliseconds) {
-        var dt = new Date();
-        while ((new Date()) - dt <= milliseconds) {
-        /* Do nothing */
-        }
-    }
 
     function checkCollisions() {
+
+        // Enemy contact
         for (i in allEnemies) {
             if (allEnemies[i].x + TILE_WIDTH / 1.4 > player.x  &&
                 allEnemies[i].x - TILE_WIDTH / 1.3 < player.x &&
                 allEnemies[i].y === player.y) {
-                return true
+
+                PAUSE.state = true;
+                PAUSE.ms = 100;
+                LIVES--;
+                return;
             }
         }
-        for (i in allGems) {
-            if (player.y > TILES_Y_START && allGems[i].x === player.x &&
-                allGems[i].y === player.y && player.pickedGem === false) {
-                allGems[i].x = -TILE_WIDTH;
-                allGems[i].y = -TILE_HEIGHT;
-                player.pickedGem = i;
-            }
+
+        // Catch the heart
+        if (heart.x + TILE_WIDTH / 1.4 > player.x &&
+            heart.x - TILE_WIDTH / 1.3 < player.x &&  heart.y === player.y + HEART_Y_DELTA) {
+            heart.initposition();
+            LIVES++;
         }
     };
 
-    /* This function initially draws the "game level", it will then call
-     * the renderEntities function. Remember, this function is called every
-     * game tick (or loop of the game engine) because that's how games work -
-     * they are flipbooks creating the illusion of animation but in reality
-     * they are just drawing the entire screen over and over.
+    /* This function initially draws the "game level" by calling renderWBG(),
+     * it will then call the renderEntities function. Remember, this function
+     * is called every game tick (or loop of the game engine) because that's
+     * how games work - they are flipbooks creating the illusion of animation
+     * but in reality they are just drawing the entire screen over and over.
      */
     function render() {
+        renderWBG();
+        renderEntities();
+    }
+
+    /* This function is called by the render function and is called on each game
+     * tick. It's purpose is to clear canvas and then draw the water, bricks and
+     * grass.
+     */
+    function renderWBG() {
         // clears the canvas to eliminate sunken-hero" effect.
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
@@ -166,9 +192,6 @@ var Engine = (function(global) {
                 ctx.drawImage(Resources.get(rowImages[row]), col * 101, row * 83);
             }
         }
-
-
-        renderEntities();
     }
 
     /* This function is called by the render function and is called on each game
@@ -187,7 +210,15 @@ var Engine = (function(global) {
             gem.render();
         });
 
+        allRocks.forEach(function(rock) {
+            rock.render();
+        });
+
         player.render();
+
+        heart.render();
+
+        renderStats();
     }
 
     /* This function does nothing but it could have been a good place to
@@ -195,8 +226,26 @@ var Engine = (function(global) {
      * those sorts of things. It's only called once by the init() method.
      */
     function reset() {
-        player.x = this.x = TILE_WIDTH * 2;
-        player.y = TILES_Y_START + TILE_HEIGHT * 3;;
+        // noop
+    }
+
+    function gameOver() {
+
+        renderWBG();
+        renderStats();
+
+        ctx.font = "108px Impact";
+        ctx.strokeStyle = "black";
+        ctx.fillStyle = "white";
+        ctx.lineWidth = 3;
+        ctx.textBaseline = "bottom";
+        ctx.textAlign = "left";
+
+        ctx.fillText('GAME OVER!', 0, ctx.canvas.height / 2 + TILE_HEIGHT);
+        ctx.strokeText('GAME OVER!', 0, ctx.canvas.height / 2 + TILE_HEIGHT);
+
+        win.requestAnimationFrame(gameOver);
+
     }
 
     /* Go ahead and load all of the images we know we're going to need to
@@ -211,9 +260,15 @@ var Engine = (function(global) {
         'images/char-boy.png',
         'images/Gem Blue.png',
         'images/Gem Green.png',
-        'images/Gem Orange.png'
+        'images/Gem Orange.png',
+        'images/Rock.png',
+        'images/Star.png',
+        'images/Heart.png'
+
     ]);
+
     Resources.onReady(init);
+    //Resources.onReady(render);
 
     /* Assign the canvas' context object to the global variable (the window
      * object when run in a browser) so that developer's can use it more easily
