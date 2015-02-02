@@ -206,6 +206,8 @@ var Engine = (function(global) {
             enemy.render();
         });
 
+        key.render();
+
         allGems.forEach(function(gem) {
             gem.render();
         });
@@ -262,7 +264,7 @@ var Engine = (function(global) {
         'images/Gem Green.png',
         'images/Gem Orange.png',
         'images/Rock.png',
-        'images/Star.png',
+        'images/Key.png',
         'images/Heart.png'
 
     ]);

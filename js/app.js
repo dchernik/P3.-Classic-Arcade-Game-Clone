@@ -3,6 +3,7 @@ var IMAGE_HEIGHT = 171;
 var TILE_WIDTH = 101;
 var TILE_HEIGHT = 83;
 var TILES_Y_START = 62;
+var WATER_Y = -21;
 var HEART_Y_DELTA = 17; // To make Heart look centered on the row
 var ENEMY_SPEED = 40;
 var GEM_SPRITES = ['images/Gem Blue.png', 'images/Gem Green.png', 'images/Gem Orange.png',
@@ -17,6 +18,19 @@ var PAUSE = {
     state: false,
     ms: 0,
 };
+
+var Key = function() {
+    this.sprite = 'images/Key.png';
+    this.x = Math.floor(Math.random() * 5) * TILE_WIDTH;
+    this.y = TILES_Y_START + TILE_HEIGHT * 4;
+}
+
+// Draw gems on the screen, required method for game
+Key.prototype.render = function() {
+    ctx.drawImage(Resources.get(this.sprite), this.x, this.y);
+}
+
+var key = new Key();
 
 // Heart to gain lives
 var Heart = function() {
@@ -95,7 +109,7 @@ var Gem = function(gemNumber) {
 }
 
 // Draw gems on the screen, required method for game
-Gem.prototype.render = function(gemNumber) {
+Gem.prototype.render = function() {
     ctx.drawImage(Resources.get(this.sprite), this.x, this.y);
 }
 
@@ -171,12 +185,6 @@ Player.prototype.reset = function() {
 Player.prototype.handleGem = function() {
     // Drop off a Gem
     if (this.pickedGem > -1) {
-        // Make sure to not drop onto another Gem
-        for (var i = 0; i < NUMBER_OF_GEMS; i++) {
-            if (allGems[i].x === this.x && allGems[i].y === this.y) {
-                return;
-            }
-        }
 
         // Set Gem's coordinates to those of player
         allGems[this.pickedGem].x = this.x;
@@ -254,7 +262,7 @@ Player.prototype.update = function(keyPressed) {
         }
     }
 
-    // Can't step on Gems in water.
+    // Can't step on Gems in water
     for (i in allGems) {
         if (this.y === TILES_Y_START - TILE_HEIGHT && allGems[i].x === this.x &&
             allGems[i].y === this.y) {
