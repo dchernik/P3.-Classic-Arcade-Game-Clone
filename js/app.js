@@ -5,13 +5,14 @@ var TILE_HEIGHT = 83;
 var TILES_Y_START = 62;
 var WATER_Y = -21;
 var HEART_Y_DELTA = 17; // To make Heart look centered on the row
-var ENEMY_SPEED = 40;
-var GEMS_PICKED = 0; // Keeps track of the Gems that were picked up by player
+//var GEMS_PICKED = 0; // Keeps track of the Gems that were picked up by player
 var NUMBER_OF_ENEMIES = 3;
 var NUMBER_OF_ROCKS = 5;
-var POINTS = 0;
-var LIVES = 5;
-var LEVEL = 0;
+// var POINTS = 0;
+// var POINTS_PER_LEVEL = 100;
+// var POINTS_PER_GEM = 10;
+// var POINTS_PER_KEY = 50;
+// var ENEMY_SPEED = 20;
 var PAUSE = {
     state: false,
     ms: 0,
@@ -20,11 +21,40 @@ var GEM_SPRITES = ['images/Gem Blue.png', 'images/Gem Green.png', 'images/Gem Or
     'images/Gem Green.png', 'images/Gem Blue.png'];
 var NUMBER_OF_GEMS = GEM_SPRITES.length;
 
+var Level = function() {
+    this.number = 1;
+    this.points = 0
+    this.pointsPerLevel = 100;
+    this.pointsPerGem = 10;
+    this.pointsPerKey = 50;
+    this.enemySpeed = 20;
+    this.gemsPicked = 0;
+}
+
+Level.prototype.updateData = function(data) {
+    return Math.round(data * (1 + (this.number - 1) / 10));
+}
+
+Level.prototype.next = function() {
+    this.points += this.updateData(this.pointsPerLevel);
+    this.pointsPerLevel = this.updateData(this.pointsPerLevel);
+    this.pointsPerGem = this.updateData(this.pointsPerGem);
+    this.pointsPerKey = this.updateData(this.pointsPerKey);
+    this.enemySpeed = this.updateData(this.enemySpeed);
+    this.number++;
+    this.gemsPicked = 0
+}
+
+var level = new Level();
 
 var Princess = function() {
     this.sprite = 'images/char-princess-girl.png';
-    this.x = Math.floor(Math.random() * 5) * TILE_WIDTH;
     this.y = WATER_Y;
+    this.initposition();
+}
+
+Princess.prototype.initposition = function() {
+    this.x = Math.floor(Math.random() * 5) * TILE_WIDTH;
 }
 
 // Draw Key on the screen, required method for game
@@ -36,9 +66,14 @@ var princess = new Princess();
 
 var Key = function() {
     this.sprite = 'images/Key.png';
+    this.init();
+}
+
+Key.prototype.init = function() {
     this.x = Math.floor(Math.random() * 5) * TILE_WIDTH;
     this.y = TILES_Y_START + TILE_HEIGHT * 4;
     this.found = false;
+    this.gaveToPrincess = false;
 }
 
 // Draw Key on the screen, required method for game
@@ -58,7 +93,7 @@ var Heart = function() {
 
 Heart.prototype.initposition = function() {
     this.x = -TILE_WIDTH * Math.floor((Math.random() * 20) + 15);
-    this.y = HEART_Y_DELTA + TILES_Y_START + TILE_HEIGHT * Math.floor(Math.random() * 3);
+    this.y = TILES_Y_START + TILE_HEIGHT * Math.floor(Math.random() * 3);
 }
 
 Heart.prototype.update = function(dt) {
@@ -75,7 +110,7 @@ Heart.prototype.update = function(dt) {
 
 // Draw Heart on the screen, required method for game
 Heart.prototype.render = function() {
-    ctx.drawImage(Resources.get(this.sprite), this.x, this.y);
+    ctx.drawImage(Resources.get(this.sprite), this.x, this.y + HEART_Y_DELTA);
 }
 
 var heart = new Heart();
@@ -120,6 +155,10 @@ for (var i = 0; i < NUMBER_OF_ROCKS; i++) {
 // Gems for fun
 var Gem = function(gemNumber) {
     this.sprite = GEM_SPRITES[gemNumber];
+    this.initposition(gemNumber);
+}
+
+Gem.prototype.initposition = function(gemNumber) {
     this.x = gemNumber * TILE_WIDTH;
     this.y = TILES_Y_START + TILE_HEIGHT * 4;
 }
@@ -158,7 +197,7 @@ Enemy.prototype.update = function(dt) {
     // which will ensure the game runs at the same speed for
     // all computers.
     if (this.x < ctx.canvas.width) {
-        this.x += (ENEMY_SPEED * this.velocity) * dt ;
+        this.x += level.enemySpeed * this.velocity * dt ;
     }
 
     // Enemy has left the "building"
@@ -177,6 +216,7 @@ Enemy.prototype.render = function() {
 // a handleInput() method.
 var Player = function() {
     this.sprite = 'images/char-boy.png';
+    this.lives = 5;
     this.reset();
 }
 
@@ -198,14 +238,16 @@ Player.prototype.reset = function() {
     this.gemPickedAt_Y = null;
 }
 
-Player.prototype.handleGem = function() {
+Player.prototype.handleGems = function() {
     // Drop off a Gem ONLY in the water
-    if (this.pickedGem > -1 && this.y === TILES_Y_START - TILE_HEIGHT &&
+    if (this.pickedGem > -1 && this.y === WATER_Y &&
         this.x !== princess.x) {
 
         // Set Gem's coordinates to those of player
         allGems[this.pickedGem].x = this.x;
         allGems[this.pickedGem].y = this.y;
+
+        level.points += level.updateData(level.pointsPerGem);
 
         // Reset Gem's data in player
         this.pickedGem = -1;
@@ -217,7 +259,7 @@ Player.prototype.handleGem = function() {
         this.y = TILES_Y_START + TILE_HEIGHT * 3;
     }
 
-    // Pick up a Gem
+    // Pick up a Gem or the Key
     else if (this.pickedGem === -1) {
         // Find a Gem to pick up
         for (var i = 0; i < NUMBER_OF_GEMS; i++) {
@@ -232,9 +274,41 @@ Player.prototype.handleGem = function() {
                 allGems[i].x = -TILE_WIDTH;
                 allGems[i].y = -TILE_HEIGHT;
 
-                GEMS_PICKED++;
+                // Found the key
+                if (this.x === key.x && this.y === key.y) {
+                    if (key.found === false) {
+                        level.points += level.updateData(level.pointsPerKey);
+                    }
+                    key.found = true;
+                }
+
+                level.gemsPicked++;
+
                 return;
             }
+        }
+
+        // pick the Key
+        if (key.found === true && this.x === key.x && this.y === key.y) {
+
+            this.pickedKey = true;
+
+            // Put Key in the pocket
+            key.x = -TILE_WIDTH;
+            key.y = -TILE_HEIGHT;
+        }
+
+        // Give Key to Princess
+        else if (this.pickedKey === true && this.x === princess.x &&
+            this.y === princess.y) {
+
+            key.gaveToPrincess = true;
+            this.pickedKey = false;
+            key.x = this.x;
+            key.y = this.y;
+
+            PAUSE.state = true;
+            PAUSE.ms = 5000;
         }
     }
 }
@@ -263,7 +337,7 @@ Player.prototype.update = function(keyPressed) {
             break
         case 'space':
             // Do the right thing (with a Gem, if needed)
-            this.handleGem();
+            this.handleGems();
             break;
     }
 
@@ -322,7 +396,6 @@ document.addEventListener('keyup', function(e) {
 
 
 function renderStats() {
-
     ctx.font = "36px Impact";
     ctx.strokeStyle = "black";
     ctx.fillStyle = "white";
@@ -330,14 +403,15 @@ function renderStats() {
     ctx.textBaseline = "bottom";
 
     ctx.textAlign = "left";
-    ctx.fillText('Level: ' + LEVEL, 0, ctx.canvas.height - TEXT_MARGIN);
-    ctx.strokeText('Level: ' + LEVEL, 0, ctx.canvas.height - TEXT_MARGIN);
+    ctx.fillText('Level: ' + level.number, 0, ctx.canvas.height - TEXT_MARGIN);
+    ctx.strokeText('Level: ' + level.number, 0, ctx.canvas.height - TEXT_MARGIN);
 
     ctx.textAlign = "center";
-    ctx.fillText('Score: ' + POINTS, ctx.canvas.width / 2, ctx.canvas.height - TEXT_MARGIN);
-    ctx.strokeText('Score: ' + POINTS, ctx.canvas.width / 2, ctx.canvas.height - TEXT_MARGIN);
+    ctx.fillText('Score: ' + level.points, ctx.canvas.width / 2, ctx.canvas.height - TEXT_MARGIN);
+    ctx.strokeText('Score: ' + level.points, ctx.canvas.width / 2, ctx.canvas.height - TEXT_MARGIN);
 
     ctx.textAlign = "right";
-    ctx.fillText('Lives: ' + LIVES, ctx.canvas.width, ctx.canvas.height - TEXT_MARGIN);
-    ctx.strokeText('Lives: ' + LIVES, ctx.canvas.width, ctx.canvas.height - TEXT_MARGIN);
+    ctx.fillText('Lives: ' + player.lives, ctx.canvas.width, ctx.canvas.height - TEXT_MARGIN);
+    ctx.strokeText('Lives: ' + player.lives, ctx.canvas.width, ctx.canvas.height - TEXT_MARGIN);
 }
+

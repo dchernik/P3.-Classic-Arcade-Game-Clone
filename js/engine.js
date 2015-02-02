@@ -57,19 +57,26 @@ var Engine = (function(global) {
          * function again as soon as the browser is able to draw another frame.
          */
         //win.requestAnimationFrame(main);
-        if (LIVES < 1 || (key.found === false && GEMS_PICKED >= NUMBER_OF_GEMS - 1)) {
-            LIVES = 0;
+        // if (key.gaveToPrincess === true) {
+        //     nextLevel();
+        //     setTimeout(function() {win.requestAnimationFrame(main)}, 5000);
+        // }
+        if (player.lives < 1 || (key.found === false && level.gemsPicked >= NUMBER_OF_GEMS - 1)) {
+            player.lives = 0;
+
             gameOver();
         }
         else if (PAUSE.state === false) {
             win.requestAnimationFrame(main);
         }
         else {
+            if (key.gaveToPrincess === true) {
+                nextLevel();
+            }
             setTimeout(function() {win.requestAnimationFrame(main)}, PAUSE.ms);
             player.reset();
             PAUSE.state = false;
             PAUSE.ms = 0;
-
         }
     };
 
@@ -129,16 +136,16 @@ var Engine = (function(global) {
 
                 PAUSE.state = true;
                 PAUSE.ms = 100;
-                LIVES--;
+                player.lives--;
                 return;
             }
         }
 
         // Catch the heart
         if (heart.x + TILE_WIDTH / 1.4 > player.x &&
-            heart.x - TILE_WIDTH / 1.3 < player.x &&  heart.y === player.y + HEART_Y_DELTA) {
+            heart.x - TILE_WIDTH / 1.3 < player.x &&  heart.y === player.y) {
             heart.initposition();
-            LIVES++;
+            player.lives++;
         }
     };
 
@@ -233,24 +240,71 @@ var Engine = (function(global) {
         // noop
     }
 
+    var hx = 0;
+    var hy = 0;
     function gameOver() {
+        var text = 'Bugs Rule!';
 
-        renderWBG();
-        renderEntities();
-        renderStats();
+        if (hx > ctx.canvas.width) {
+            hx = 0;
+            hy+=50;
+        }
 
         ctx.font = "108px Impact";
+        ctx.strokeStyle = "white";
+        ctx.fillStyle = "black";
+        ctx.lineWidth = 3;
+        ctx.textBaseline = "bottom";
+        ctx.textAlign = "center";
+
+
+
+        if (hx % 40 === 0 && hy % 50 === 0 && hy < ctx.canvas.height - IMAGE_HEIGHT + TILE_HEIGHT)
+            ctx.drawImage(Resources.get('images/enemy-bug.png'), hx-20, hy-50);
+
+        hx+=20;
+
+        if (hy >= ctx.canvas.height - IMAGE_HEIGHT + TILE_HEIGHT) {
+            ctx.fillText(text, ctx.canvas.width / 2, ctx.canvas.height / 2 + TILE_HEIGHT);
+            ctx.strokeText(text, ctx.canvas.width / 2, ctx.canvas.height / 2 + TILE_HEIGHT);
+        }
+
+        renderStats();
+
+        win.requestAnimationFrame(gameOver);
+    }
+
+    function nextLevel() {
+        level.next();
+
+        render();
+
+        princess.initposition();
+        player.reset();
+        key.init();
+        heart.initposition();
+
+        allGems.forEach(function(gem, index) {
+            gem.initposition(index);
+        });
+
+        allEnemies.forEach(function(enemy) {
+            enemy.initposition();
+        });
+
+        allRocks.forEach(function(rock) {
+            rock.initposition();
+        });
+
+        ctx.font = "100px Impact";
         ctx.strokeStyle = "black";
         ctx.fillStyle = "white";
         ctx.lineWidth = 3;
         ctx.textBaseline = "bottom";
-        ctx.textAlign = "left";
+        ctx.textAlign = "center";
 
-        ctx.fillText('GAME OVER!', 0, ctx.canvas.height / 2 + TILE_HEIGHT);
-        ctx.strokeText('GAME OVER!', 0, ctx.canvas.height / 2 + TILE_HEIGHT);
-
-        win.requestAnimationFrame(gameOver);
-
+        ctx.fillText('NEXT LEVEL!', ctx.canvas.width / 2, ctx.canvas.height / 2 + TILE_HEIGHT);
+        ctx.strokeText('NEXT LEVEL!', ctx.canvas.width / 2, ctx.canvas.height / 2 + TILE_HEIGHT);
     }
 
     /* Go ahead and load all of the images we know we're going to need to
