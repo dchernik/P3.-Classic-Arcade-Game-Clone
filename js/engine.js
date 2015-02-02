@@ -57,7 +57,7 @@ var Engine = (function(global) {
          * function again as soon as the browser is able to draw another frame.
          */
         //win.requestAnimationFrame(main);
-        if (LIVES < 1) {
+        if (LIVES < 1 || (key.found === false && GEMS_PICKED >= NUMBER_OF_GEMS - 1)) {
             LIVES = 0;
             gameOver();
         }
@@ -218,6 +218,8 @@ var Engine = (function(global) {
 
         player.render();
 
+        princess.render();
+
         heart.render();
 
         renderStats();
@@ -234,6 +236,7 @@ var Engine = (function(global) {
     function gameOver() {
 
         renderWBG();
+        renderEntities();
         renderStats();
 
         ctx.font = "108px Impact";
@@ -265,7 +268,8 @@ var Engine = (function(global) {
         'images/Gem Orange.png',
         'images/Rock.png',
         'images/Key.png',
-        'images/Heart.png'
+        'images/Heart.png',
+        'images/char-princess-girl.png'
 
     ]);
 

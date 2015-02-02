@@ -6,11 +6,9 @@ var TILES_Y_START = 62;
 var WATER_Y = -21;
 var HEART_Y_DELTA = 17; // To make Heart look centered on the row
 var ENEMY_SPEED = 40;
-var GEM_SPRITES = ['images/Gem Blue.png', 'images/Gem Green.png', 'images/Gem Orange.png',
-                                                'images/Gem Green.png', 'images/Gem Blue.png'];
+var GEMS_PICKED = 0; // Keeps track of the Gems that were picked up by player
 var NUMBER_OF_ENEMIES = 3;
-var NUMBER_OF_ROCKS = 3;
-var NUMBER_OF_GEMS = GEM_SPRITES.length;
+var NUMBER_OF_ROCKS = 5;
 var POINTS = 0;
 var LIVES = 5;
 var LEVEL = 0;
@@ -18,14 +16,32 @@ var PAUSE = {
     state: false,
     ms: 0,
 };
+var GEM_SPRITES = ['images/Gem Blue.png', 'images/Gem Green.png', 'images/Gem Orange.png',
+    'images/Gem Green.png', 'images/Gem Blue.png'];
+var NUMBER_OF_GEMS = GEM_SPRITES.length;
+
+
+var Princess = function() {
+    this.sprite = 'images/char-princess-girl.png';
+    this.x = Math.floor(Math.random() * 5) * TILE_WIDTH;
+    this.y = WATER_Y;
+}
+
+// Draw Key on the screen, required method for game
+Princess.prototype.render = function() {
+    ctx.drawImage(Resources.get(this.sprite), this.x, this.y);
+}
+
+var princess = new Princess();
 
 var Key = function() {
     this.sprite = 'images/Key.png';
     this.x = Math.floor(Math.random() * 5) * TILE_WIDTH;
     this.y = TILES_Y_START + TILE_HEIGHT * 4;
+    this.found = false;
 }
 
-// Draw gems on the screen, required method for game
+// Draw Key on the screen, required method for game
 Key.prototype.render = function() {
     ctx.drawImage(Resources.get(this.sprite), this.x, this.y);
 }
@@ -67,7 +83,7 @@ var heart = new Heart();
 // Rocks for fun
 var Rock = function() {
     this.sprite = 'images/Rock.png';
-    this.speed = 30;
+    this.speed = 10;
     this.initposition();
 }
 
@@ -183,8 +199,9 @@ Player.prototype.reset = function() {
 }
 
 Player.prototype.handleGem = function() {
-    // Drop off a Gem
-    if (this.pickedGem > -1) {
+    // Drop off a Gem ONLY in the water
+    if (this.pickedGem > -1 && this.y === TILES_Y_START - TILE_HEIGHT &&
+        this.x !== princess.x) {
 
         // Set Gem's coordinates to those of player
         allGems[this.pickedGem].x = this.x;
@@ -195,16 +212,13 @@ Player.prototype.handleGem = function() {
         this.gemPickedAt_X = null;
         this.gemPickedAt_Y = null;
 
-
-        // Dropping at destination row
-        if (this.y === TILES_Y_START - TILE_HEIGHT) {
-            this.x = TILE_WIDTH * 2;
-            this.y = TILES_Y_START + TILE_HEIGHT * 3;
-        }
+        // Put player to start
+        this.x = TILE_WIDTH * 2;
+        this.y = TILES_Y_START + TILE_HEIGHT * 3;
     }
 
     // Pick up a Gem
-    else {
+    else if (this.pickedGem === -1) {
         // Find a Gem to pick up
         for (var i = 0; i < NUMBER_OF_GEMS; i++) {
             if (allGems[i].x === this.x && allGems[i].y === this.y) {
@@ -217,6 +231,9 @@ Player.prototype.handleGem = function() {
                 // Hide Gem from canvas
                 allGems[i].x = -TILE_WIDTH;
                 allGems[i].y = -TILE_HEIGHT;
+
+                GEMS_PICKED++;
+                return;
             }
         }
     }
