@@ -1,3 +1,20 @@
 body {
     text-align: center;
+    background-color: #2e8b57;
+}
+
+.timer {
+	font: 600 1em Verdana, sans-serif;
+	background-color: #b0e0e6;
+	position: absolute;
+	left: 50%;
+	color: blue;
+	border-radius: 10px;
+	width: 202px;
+	margin: 0 0 0 -101px;
+}
+
+p {
+	color: black;
+	display: inline;
 }

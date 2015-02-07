@@ -15,6 +15,7 @@
  */
 
 var Engine = (function(global) {
+    var requestID;
     /* Predefine the variables we'll be using within this scope,
      * create the canvas element, grab the 2D context for that canvas
      * set the canvas elements height/width and add it to the DOM.
@@ -48,6 +49,7 @@ var Engine = (function(global) {
         update(dt);
         render();
 
+
         /* Set our lastTime variable which is used to determine the time delta
          * for the next time this function is called.
          */
@@ -55,28 +57,27 @@ var Engine = (function(global) {
 
         /* Use the browser's requestAnimationFrame function to call this
          * function again as soon as the browser is able to draw another frame.
+         *
+         * Draws canvas appropriate for current game state.
          */
-        //win.requestAnimationFrame(main);
-        // if (key.gaveToPrincess === true) {
-        //     nextLevel();
-        //     setTimeout(function() {win.requestAnimationFrame(main)}, 5000);
-        // }
-        if (player.lives < 1 || (key.found === false && level.gemsPicked >= NUMBER_OF_GEMS - 1)) {
-            player.lives = 0;
-
-            gameOver();
-        }
-        else if (PAUSE.state === false) {
-            win.requestAnimationFrame(main);
+        if (game.state === 'run') {
+            requestID = win.requestAnimationFrame(main);
         }
         else {
-            if (key.gaveToPrincess === true) {
-                nextLevel();
+            var pauseTime = game.state;
+            cancelAnimationFrame(requestID);
+            game.handleState();
+            if (game.state === 'game-over') {
+                setTimeout(function() {
+                    requestID = win.requestAnimationFrame(byeBye);
+                }, game.pause[pauseTime]);
             }
-            setTimeout(function() {win.requestAnimationFrame(main)}, PAUSE.ms);
-            player.reset();
-            PAUSE.state = false;
-            PAUSE.ms = 0;
+            else {
+                setTimeout(function() {
+                    game.state = 'run'
+                    requestID = win.requestAnimationFrame(main);
+                },game.pause[pauseTime]);
+            }
         }
     };
 
@@ -101,7 +102,7 @@ var Engine = (function(global) {
      */
     function update(dt) {
         updateEntities(dt);
-        checkCollisions();
+        // checkCollisions();
     }
 
     /* This is called by the update function  and loops through all of the
@@ -123,51 +124,19 @@ var Engine = (function(global) {
         player.update();
 
         heart.update(dt);
+
+        star.update(dt);
     }
 
-
-    function checkCollisions() {
-
-        // Enemy contact
-        for (i in allEnemies) {
-            if (allEnemies[i].x + TILE_WIDTH / 1.4 > player.x  &&
-                allEnemies[i].x - TILE_WIDTH / 1.3 < player.x &&
-                allEnemies[i].y === player.y) {
-
-                PAUSE.state = true;
-                PAUSE.ms = 100;
-                player.lives--;
-                return;
-            }
-        }
-
-        // Catch the heart
-        if (heart.x + TILE_WIDTH / 1.4 > player.x &&
-            heart.x - TILE_WIDTH / 1.3 < player.x &&  heart.y === player.y) {
-            heart.initposition();
-            player.lives++;
-        }
-    };
-
-    /* This function initially draws the "game level" by calling renderWBG(),
-     * it will then call the renderEntities function. Remember, this function
-     * is called every game tick (or loop of the game engine) because that's
-     * how games work - they are flipbooks creating the illusion of animation
-     * but in reality they are just drawing the entire screen over and over.
+    /* This function initially draws the "game level", it will then call
+     * the renderEntities function. Remember, this function is called every
+     * game tick (or loop of the game engine) because that's how games work -
+     * they are flipbooks creating the illusion of animation but in reality
+     * they are just drawing the entire screen over and over.
      */
     function render() {
-        renderWBG();
-        renderEntities();
-    }
-
-    /* This function is called by the render function and is called on each game
-     * tick. It's purpose is to clear canvas and then draw the water, bricks and
-     * grass.
-     */
-    function renderWBG() {
         // clears the canvas to eliminate sunken-hero" effect.
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-
         /* This array holds the relative URL to the image used
          * for that particular row of the game level.
          */
@@ -199,6 +168,9 @@ var Engine = (function(global) {
                 ctx.drawImage(Resources.get(rowImages[row]), col * 101, row * 83);
             }
         }
+
+
+        renderEntities();
     }
 
     /* This function is called by the render function and is called on each game
@@ -223,11 +195,13 @@ var Engine = (function(global) {
             rock.render();
         });
 
-        player.render();
-
         princess.render();
 
         heart.render();
+
+        star.render();
+
+        player.render();
 
         renderStats();
     }
@@ -238,73 +212,6 @@ var Engine = (function(global) {
      */
     function reset() {
         // noop
-    }
-
-    var hx = 0;
-    var hy = 0;
-    function gameOver() {
-        var text = 'Bugs Rule!';
-
-        if (hx > ctx.canvas.width) {
-            hx = 0;
-            hy+=50;
-        }
-
-        ctx.font = "108px Impact";
-        ctx.strokeStyle = "white";
-        ctx.fillStyle = "black";
-        ctx.lineWidth = 3;
-        ctx.textBaseline = "bottom";
-        ctx.textAlign = "center";
-
-
-
-        if (hx % 40 === 0 && hy % 50 === 0 && hy < ctx.canvas.height - IMAGE_HEIGHT + TILE_HEIGHT)
-            ctx.drawImage(Resources.get('images/enemy-bug.png'), hx-20, hy-50);
-
-        hx+=20;
-
-        if (hy >= ctx.canvas.height - IMAGE_HEIGHT + TILE_HEIGHT) {
-            ctx.fillText(text, ctx.canvas.width / 2, ctx.canvas.height / 2 + TILE_HEIGHT);
-            ctx.strokeText(text, ctx.canvas.width / 2, ctx.canvas.height / 2 + TILE_HEIGHT);
-        }
-
-        renderStats();
-
-        win.requestAnimationFrame(gameOver);
-    }
-
-    function nextLevel() {
-        level.next();
-
-        render();
-
-        princess.initposition();
-        player.reset();
-        key.init();
-        heart.initposition();
-
-        allGems.forEach(function(gem, index) {
-            gem.initposition(index);
-        });
-
-        allEnemies.forEach(function(enemy) {
-            enemy.initposition();
-        });
-
-        allRocks.forEach(function(rock) {
-            rock.initposition();
-        });
-
-        ctx.font = "100px Impact";
-        ctx.strokeStyle = "black";
-        ctx.fillStyle = "white";
-        ctx.lineWidth = 3;
-        ctx.textBaseline = "bottom";
-        ctx.textAlign = "center";
-
-        ctx.fillText('NEXT LEVEL!', ctx.canvas.width / 2, ctx.canvas.height / 2 + TILE_HEIGHT);
-        ctx.strokeText('NEXT LEVEL!', ctx.canvas.width / 2, ctx.canvas.height / 2 + TILE_HEIGHT);
     }
 
     /* Go ahead and load all of the images we know we're going to need to
@@ -322,17 +229,77 @@ var Engine = (function(global) {
         'images/Gem Orange.png',
         'images/Rock.png',
         'images/Key.png',
+        'images/Star.png',
         'images/Heart.png',
         'images/char-princess-girl.png'
-
     ]);
-
     Resources.onReady(init);
-    //Resources.onReady(render);
 
     /* Assign the canvas' context object to the global variable (the window
      * object when run in a browser) so that developer's can use it more easily
      * from within their app.js files.
      */
     global.ctx = ctx;
+
+
+
+// These vars will be used to render the very last screen of the game
+var lastBug_X = 0,
+    lastBug_Y = -5;
+    bugRow = 1;
+
+/* Renders the very last
+ * game screen and message.
+ */
+function byeBye() {
+    document.getElementsByClassName("timer")[0].innerHTML = 'Good-bye now!';
+    document.getElementsByClassName("timer")[0].style.color = 'blue';
+    var text = 'This is a';
+    ctx.font = "96px Impact";
+    ctx.strokeStyle = "white";
+    ctx.fillStyle = "black";
+    ctx.lineWidth = 3;
+    ctx.textBaseline = "bottom";
+    ctx.textAlign = "center";
+
+    // Sets next bug's coordinates on next row in chess order
+    if (lastBug_X > ctx.canvas.width) {
+        if (bugRow % 2 === 0) {
+           lastBug_X = 0;
+        }
+        else {
+            lastBug_X = 49;
+        }
+
+        lastBug_Y += 30;
+        bugRow++;
+    }
+
+    if (lastBug_Y < ctx.canvas.height - TILE_HEIGHT) {
+        ctx.drawImage(Resources.get('images/enemy-bug.png'), lastBug_X-20, lastBug_Y-50);
+    }
+
+    // After drowing bug, set next's 'x' coordinate.
+    lastBug_X += 98;
+
+    // Put last message on canvas on top of bugs
+    if (lastBug_Y >= ctx.canvas.height - TILE_HEIGHT) {
+        ctx.fillText(text, ctx.canvas.width / 2, TILE_HEIGHT * 3);
+        ctx.strokeText(text, ctx.canvas.width / 2, TILE_HEIGHT * 3);
+
+        text = "Bugs' World!";
+
+        ctx.fillText(text, ctx.canvas.width / 2, TILE_HEIGHT * 4);
+        ctx.strokeText(text, ctx.canvas.width / 2, TILE_HEIGHT * 4);
+    }
+
+    renderStats();
+
+    // Keep drawing bugs untill the end of canvas (approximately)
+    if (lastBug_Y < ctx.canvas.height - TILE_HEIGHT) {
+        win.requestAnimationFrame(byeBye);
+    }
+}
 })(this);
+
+
